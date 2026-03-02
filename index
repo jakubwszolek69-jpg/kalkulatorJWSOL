@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kalkulator PV</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+    label { display: block; margin-top: 16px; }
+    input, select { width: 100%; padding: 8px; margin-top: 4px; }
+    button { margin-top: 20px; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+    #result { margin-top: 24px; font-size: 1rem; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #f0f0f0; }
+    #toggleDiscount { cursor:pointer; color:orange; font-weight:bold; margin-left:8px; }
+  </style>
+</head>
+<body>
+
+  <h1>Kalkulator Fotowoltaiczny (PV)</h1>
+  <p>Wprowadź miesięczny rachunek za prąd, wybierz typ obiektu, miejsce montażu oraz moc instalacji.</p>
+
+  <label>Miesięczny rachunek za prąd (zł):
+    <input id="bill" type="number" placeholder="np. 300" />
+  </label>
+
+  <label>Typ obiektu:
+    <select id="type">
+      <option value="dom">Dom jednorodzinny</option>
+      <option value="firma">Firma</option>
+      <option value="gospodarstwo">Gospodarstwo rolne</option>
+    </select>
+  </label>
+
+  <label>Miejsce montażu:
+    <select id="mount" onchange="toggleRoofType()">
+      <option value="dach">Dach</option>
+      <option value="grunt">Grunt</option>
+    </select>
+  </label>
+
+  <label>
+  Długość przekopu (m):
+  <input type="number" id="trenchLength" placeholder="np. 10" />
+</label>
+  
+  <label id="roofTypeLabel">Rodzaj pokrycia dachu:
+    <select id="roofType">
+      <option value="blacha">Blacha</option>
+      <option value="dachowka">Dachówka</option>
+    </select>
+  </label>
+
+  <label>Turbina wiatrowa:
+    <select id="turbine">
+      <option value="0">Brak turbiny</option>
+      <option value="3">3 kW</option>
+      <option value="6">6 kW</option>
+    </select>
+  </label>
+
+  <label>Magazyn energii (kWh):
+    <select id="battery">
+      <option value="0">Brak magazynu</option>
+      <option value="5">5 kWh</option>
+      <option value="10">10 kWh</option>
+      <option value="12">12 kWh</option>
+      <option value="14">14 kWh</option>
+      <option value="16">16 kWh</option>
+      <option value="24">24 kWh</option>
+    </select>
+  </label>
+ 
+  <label>
+  <input type="checkbox" id="fullBackup"> Pełny backup
+</label>
+
+  <label>Wybrana moc instalacji (kW):
+    <input id="power" type="number" placeholder="np. 5" />
+  </label>
+
+  <button id="calculateBtn">Oblicz</button>
+  <span id="toggleDiscount">⭐</span>
+  <label id="discountLabel" style="display:none; margin-top:10px;">
+    Rabat (zł):
+    <input id="margin" type="number" value="0" />
+  </label>
+
+  <div id="result"></div>
+
+  <script>
+    function formatCurrency(value) {
+      return value.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN', minimumFractionDigits: 0 });
+    }
+
+    function calculate() {
+      const bill = parseFloat(document.getElementById('bill').value);
+      const type = document.getElementById('type').value;
+      const mount = document.getElementById('mount').value;
+      const roofTypeElement = document.getElementById('roofType');
+      const roofType = roofTypeElement ? roofTypeElement.value : "";
+      const power = parseFloat(document.getElementById('power').value);
+      const battery = document.getElementById('battery').value;
+      const turbine = document.getElementById('turbine').value;
+      const fullBackup = document.getElementById('fullBackup').checked;
+      const backupPrice = fullBackup ? 1500 : 0; // koszt pełnego backupu
+      const trenchLength = parseFloat(document.getElementById('trenchLength').value) || 0;
+      const trenchPrice = trenchLength * 30; // 30 zł za metr
+      const discount = parseFloat(document.getElementById('margin').value) || 0;
+
+      if (isNaN(bill) || isNaN(power)) {
+        document.getElementById('result').innerHTML = "<p style='color:red'>Uzupełnij rachunek i moc instalacji.</p>";
+        return;
+      }
+
+      const suggestedPower = (bill * 0.0225).toFixed(2);
+      const pvPrice = power * 2500;
+
+      let batteryPrice = 0;
+      switch(battery) {
+        case "5": batteryPrice = 5000; break;
+        case "10": batteryPrice = 8000; break;
+        case "12": batteryPrice = 9000; break;
+        case "14": batteryPrice = 10000; break;
+        case "16": batteryPrice = 11000; break;
+        case "24": batteryPrice = 15000; break;
+        default: batteryPrice = 0;
+      }
+
+      const turbinePrice = turbine === "3" ? 12000 : turbine === "6" ? 24000 : 0;
+      const total = pvPrice + batteryPrice + turbinePrice + backupPrice + trenchPrice;
+      const finalPrice = total + discount; // rabat dodawany
+      document.getElementById('result').innerHTML = `
+        <table>
+          <tr><th colspan="2">Podsumowanie instalacji PV</th></tr>
+          <tr><td>Rachunek miesięczny</td><td>${formatCurrency(bill)}</td></tr>
+          <tr><td>Typ obiektu</td><td>${type}</td></tr>
+          <tr><td>Montaż</td><td>${mount}${mount === 'dach' ? ', ' + roofType : ''}</td></tr>
+          <tr>
+          <td>Przekop</td>
+          <td>${trenchLength > 0 ? trenchLength + ' m' : 'Brak'}</td>
+          </tr>
+          <tr><td>Wybrana moc instalacji</td><td>${power} kW</td></tr>
+          <tr><td>Sugerowana moc instalacji</td><td>${suggestedPower} kW</td></tr>
+          <tr><td>Magazyn energii</td><td>${battery} kWh</td></tr>
+          <tr>
+          <td>Pełny backup</td>
+          <td>${fullBackup ? 'Tak' : 'Nie'}</td>
+          </tr>
+          <tr><th>Cena po rabacie</th><th>${formatCurrency(finalPrice)}</th></tr>
+        </table>
+      `;
+    }
+
+    function toggleRoofType() {
+      const mount = document.getElementById('mount').value;
+      document.getElementById('roofTypeLabel').style.display = mount === 'dach' ? 'block' : 'none';
+    }
+
+    window.onload = toggleRoofType;
+
+    // Obsługa przycisku Oblicz
+    document.getElementById('calculateBtn').addEventListener('click', calculate);
+
+    // Obsługa gwiazdki do pokazywania pola rabatu
+    document.getElementById('toggleDiscount').addEventListener('click', function() {
+      const label = document.getElementById('discountLabel');
+      label.style.display = label.style.display === 'none' ? 'block' : 'none';
+    });
+  </script>
+
+</body>
+</html>
